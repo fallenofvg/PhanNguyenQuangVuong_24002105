@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý công việc cá nhân - VueJS</title>
+    <!-- Nhúng Vue 3 từ CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 450px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .input-group button {
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .input-group button:hover {
+            background-color: #218838;
+        }
+        .filter-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 5px;
+        }
+        .filter-group button {
+            flex: 1;
+            padding: 6px;
+            background-color: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .filter-group button.active {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        /* Yêu cầu 5: Công việc đã hoàn thành hiển thị gạch ngang */
+        .completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+        .stats {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .btn-clear-completed {
+            width: 100%;
+            padding: 8px;
+            background-color: #ffc107;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-clear-completed:hover {
+            background-color: #e0a800;
+        }
+        .empty-msg {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="container">
+        <h2>Quản Lý Công Việc</h2>
+        
+        <!-- Yêu cầu 2 & 3: Thêm công việc bằng nút hoặc nhấn Enter (@keyup.enter) + Chống rỗng/khoảng trắng -->
+        <div class="input-group">
+            <input 
+                type="text" 
+                v-model="newTaskText" 
+                @keyup.enter="addTask" 
+                placeholder="Nhập tên công việc mới..."
+            >
+            <button @click="addTask">Thêm</button>
+        </div>
+
+        <!-- Yêu cầu 7: Lọc theo ba trạng thái: "Tất cả", "Chưa hoàn thành", "Đã hoàn thành" -->
+        <div class="filter-group">
+            <button 
+                :class="{ active: currentFilter === 'all' }" 
+                @click="currentFilter = 'all'">Tất cả</button>
+            <button 
+                :class="{ active: currentFilter === 'active' }" 
+                @click="currentFilter = 'active'">Chưa hoàn thành</button>
+            <button 
+                :class="{ active: currentFilter === 'completed' }" 
+                @click="currentFilter = 'completed'">Đã hoàn thành</button>
+        </div>
+
+        <!-- Yêu cầu 8: Thống kê tổng số công việc và số việc chưa hoàn thành bằng computed -->
+        <div class="stats">
+            <span>Tổng số: <strong>{{ totalTasks }}</strong></span>
+            <span>Chưa xong: <strong>{{ activeTasksCount }}</strong></span>
+        </div>
+
+        <!-- Yêu cầu 4 & 5 & 6 & 10: Hiển thị danh sách bằng v-for (:key bằng id), checkbox, xóa và thông báo rỗng -->
+        <ul v-if="filteredTasks.length > 0">
+            <li v-for="task in filteredTasks" :key="task.id">
+                <div class="task-item">
+                    <!-- Yêu cầu 5: Đánh dấu hoàn thành bằng checkbox, bind trực tiếp vào task.completed -->
+                    <input type="checkbox" v-model="task.completed">
+                    <!-- Thêm class 'completed' nếu task.completed = true -->
+                    <span :class="{ completed: task.completed }">{{ task.text }}</span>
+                </div>
+                <!-- Yêu cầu 6: Xóa từng công việc -->
+                <button class="btn-delete" @click="deleteTask(task.id)">Xóa</button>
+            </li>
+        </ul>
+        <div v-else class="empty-msg">
+            Không có công việc nào!
+        </div>
+
+        <!-- Yêu cầu 9: Nút "Xóa các việc đã hoàn thành" -->
+        <button class="btn-clear-completed" @click="clearCompleted">
+            Xóa các việc đã hoàn thành
+        </button>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                // Yêu cầu 1: Mảng chứa danh sách công việc (id, text, completed)
+                const tasks = ref([
+                    { id: 1, text: 'Học lập trình VueJS cơ bản', completed: true },
+                    { id: 2, text: 'Làm bài tập thực hành VueJS', completed: false },
+                    { id: 3, text: 'Ôn tập kiến thức cấu trúc dữ liệu', completed: false }
+                ]);
+
+                const newTaskText = ref('');
+                const currentFilter = ref('all'); // 'all', 'active', 'completed'
+
+                // Yêu cầu 2 & 3: Hàm thêm công việc (chặn tên rỗng hoặc chỉ chứa khoảng trắng)
+                const addTask = () => {
+                    const textTrimmed = newTaskText.value.trim();
+                    if (!textTrimmed) {
+                        alert('Tên công việc không được để trống hoặc chỉ chứa khoảng trắng!');
+                        return;
+                    }
+
+                    tasks.value.push({
+                        id: Date.now(), // Dùng timestamp làm id độc nhất
+                        text: textTrimmed,
+                        completed: false
+                    });
+
+                    newTaskText.value = ''; // Reset ô nhập
+                };
+
+                // Yêu cầu 6: Xóa từng công việc dựa vào id
+                const deleteTask = (id) => {
+                    tasks.value = tasks.value.filter(task => task.id !== id);
+                };
+
+                // Yêu cầu 9: Xóa tất cả các công việc đã hoàn thành
+                const clearCompleted = () => {
+                    tasks.value = tasks.value.filter(task => !task.completed);
+                };
+
+                // Yêu cầu 7: Computed lọc danh sách theo trạng thái chọn
+                const filteredTasks = computed(() => {
+                    if (currentFilter.value === 'active') {
+                        return tasks.value.filter(task => !task.completed);
+                    } else if (currentFilter.value === 'completed') {
+                        return tasks.value.filter(task => task.completed);
+                    }
+                    return tasks.value; // 'all'
+                });
+
+                // Yêu cầu 8: Computed tính tổng số công việc
+                const totalTasks = computed(() => tasks.value.length);
+
+                // Yêu cầu 8: Computed tính số lượng việc chưa hoàn thành
+                const activeTasksCount = computed(() => {
+                    return tasks.value.filter(task => !task.completed).length;
+                });
+
+                return {
+                    tasks,
+                    newTaskText,
+                    currentFilter,
+                    addTask,
+                    deleteTask,
+                    clearCompleted,
+                    filteredTasks,
+                    totalTasks,
+                    activeTasksCount
+                };
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>

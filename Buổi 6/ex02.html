@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đặt vé xem phim - VueJS</title>
+    <!-- Nhúng Vue 3 từ CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 400px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .radio-group, .checkbox-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .quantity-control button {
+            padding: 4px 10px;
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .quantity-control button:hover {
+            background-color: #d0d0d0;
+        }
+        .total-price {
+            font-size: 16px;
+            font-weight: bold;
+            color: #d9534f;
+            margin: 15px 0;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-submit {
+            flex: 2;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-submit:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-reset {
+            flex: 1;
+            padding: 10px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-reset:hover {
+            background-color: #5a6268;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="container">
+        <h2>Đặt Vé Xem Phim</h2>
+        
+        <!-- Yêu cầu 9: Gửi form bằng @submit.prevent -->
+        <form @submit.prevent="handleSubmit">
+            
+            <!-- Yêu cầu 1: Nhập họ tên khách hàng bằng v-model.trim -->
+            <div class="form-group">
+                <label>Họ tên khách hàng:</label>
+                <input type="text" v-model.trim="form.customerName" placeholder="Nhập họ tên...">
+            </div>
+
+            <!-- Yêu cầu 2: Chọn suất chiếu bằng select, gồm ít nhất ba suất -->
+            <div class="form-group">
+                <label>Suất chiếu:</label>
+                <select v-model="form.showtime">
+                    <option disabled value="">-- Chọn suất chiếu --</option>
+                    <option value="10:00">Suất sáng (10:00)</option>
+                    <option value="14:30">Suất chiều (14:30)</option>
+                    <option value="20:00">Suất tối (20:00)</option>
+                </select>
+            </div>
+
+            <!-- Yêu cầu 3: Chọn loại vé bằng radio (Thường: 70k, VIP: 100k) -->
+            <div class="form-group">
+                <label>Loại vé:</label>
+                <div class="radio-group">
+                    <label><input type="radio" value="70000" v-model.number="form.ticketPrice"> Vé thường (70.000đ)</label>
+                    <label><input type="radio" value="100000" v-model.number="form.ticketPrice"> Vé VIP (100.000đ)</label>
+                </div>
+            </div>
+
+            <!-- Yêu cầu 4 & 7: Nhập số lượng vé bằng v-model.number (1-10) + nút tăng giảm -->
+            <div class="form-group">
+                <label>Số lượng vé (1 - 10):</label>
+                <div class="quantity-control">
+                    <button type="button" @click="decreaseQuantity">-</button>
+                    <input type="number" v-model.number="form.quantity" min="1" max="10">
+                    <button type="button" @click="increaseQuantity">+</button>
+                </div>
+            </div>
+
+            <!-- Yêu cầu 5: Checkbox chọn combo bắp nước (45.000đ) -->
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="combo" v-model="form.hasCombo">
+                    <label for="combo" style="margin-bottom:0; cursor:pointer;">Combo bắp nước (+45.000đ)</label>
+                </div>
+            </div>
+
+            <!-- Yêu cầu 6: Dùng computed tính tổng tiền -->
+            <div class="total-price">
+                Tổng tiền: {{ totalPrice.toLocaleString('vi-VN') }} đ
+            </div>
+
+            <!-- Yêu cầu 7 & 8: Nút đặt lại form và Nút "Đặt vé" (chỉ bật khi họ tên không rỗng & số lượng hợp lệ từ 1-10) -->
+            <div class="actions">
+                <button type="submit" class="btn-submit" :disabled="!isFormValid">Đặt vé</button>
+                <button type="button" class="btn-reset" @click="handleReset">Đặt lại</button>
+            </div>
+
+        </form>
+
+        <!-- Yêu cầu 9: Hiển thị thông tin xác nhận ngay trên trang sau khi gửi -->
+        <div v-if="submittedData" class="result-box">
+            <h3>Xác Nhận Đặt Vé Thành Công!</h3>
+            <p><strong>Khách hàng:</strong> {{ submittedData.customerName }}</p>
+            <p><strong>Suất chiếu:</strong> {{ submittedData.showtime }}</p>
+            <p><strong>Loại vé:</strong> {{ submittedData.ticketPrice === 100000 ? 'Vé VIP' : 'Vé thường' }}</p>
+            <p><strong>Số lượng:</strong> {{ submittedData.quantity }}</p>
+            <p><strong>Combo bắp nước:</strong> {{ submittedData.hasCombo ? 'Có (45.000đ)' : 'Không' }}</p>
+            <p><strong>Tổng tiền:</strong> {{ submittedData.totalPrice.toLocaleString('vi-VN') }} đ</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, reactive } = Vue;
+
+        createApp({
+            setup() {
+                // Khởi tạo dữ liệu form ban đầu
+                const initialForm = {
+                    customerName: '',
+                    showtime: '',
+                    ticketPrice: 70000,
+                    quantity: 1,
+                    hasCombo: false
+                };
+
+                const form = reactive({ ...initialForm });
+                const submittedData = ref(null);
+
+                // Yêu cầu 6: Computed tính tổng tiền theo công thức: Giá vé × Số lượng + Tiền combo
+                const totalPrice = computed(() => {
+                    const comboPrice = form.hasCombo ? 45000 : 0;
+                    return (form.ticketPrice * form.quantity) + comboPrice;
+                });
+
+                // Yêu cầu 8: Điều kiện bật nút "Đặt vé" (họ tên không rỗng & số lượng từ 1 đến 10 & đã chọn suất chiếu)
+                const isFormValid = computed(() => {
+                    const nameValid = form.customerName.trim().length > 0;
+                    const qtyValid = form.quantity >= 1 && form.quantity <= 10;
+                    const showtimeValid = form.showtime !== '';
+                    return nameValid && qtyValid && showtimeValid;
+                });
+
+                // Yêu cầu 7: Hàm tăng/giảm số lượng có giới hạn từ 1 đến 10
+                const increaseQuantity = () => {
+                    if (form.quantity < 10) form.quantity++;
+                };
+
+                const decreaseQuantity = () => {
+                    if (form.quantity > 1) form.quantity--;
+                };
+
+                // Yêu cầu 7: Hàm đặt lại form
+                const handleReset = () => {
+                    Object.assign(form, initialForm);
+                    submittedData.value = null;
+                };
+
+                // Yêu cầu 9: Xử lý khi gửi form (@submit.prevent)
+                const handleSubmit = () => {
+                    if (isFormValid.value) {
+                        // Lưu lại bản sao dữ liệu để hiển thị kết quả xác nhận
+                        submittedData.value = {
+                            ...form,
+                            totalPrice: totalPrice.value
+                        };
+                    }
+                };
+
+                return {
+                    form,
+                    submittedData,
+                    totalPrice,
+                    isFormValid,
+                    increaseQuantity,
+                    decreaseQuantity,
+                    handleReset,
+                    handleSubmit
+                };
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>

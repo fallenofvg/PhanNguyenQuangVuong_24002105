@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thẻ thông tin sinh viên - VueJS</title>
+    <!-- Nhúng Vue 3 từ CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 350px;
+            text-align: center;
+        }
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid #ddd;
+        }
+        .info {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        .info p {
+            margin: 8px 0;
+        }
+        /* Style cho xếp loại */
+        .gioi { color: #28a745; font-weight: bold; }
+        .kha { color: #17a2b8; font-weight: bold; }
+        .trung-binh { color: #ffc107; font-weight: bold; }
+        .chua-dat { color: #dc3545; font-weight: bold; }
+        
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .intro {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            text-align: left;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="card">
+            <!-- Yêu cầu 3: Gắn đường dẫn ảnh và nội dung thay thế bằng v-bind (:src, :alt) -->
+            <img :src="student.avatar" :alt="student.fullName" class="avatar">
+            
+            <div class="info">
+                <!-- Yêu cầu 1 & 2: Mã sinh viên và Họ tên bằng {{ }} -->
+                <p><strong>Mã SV:</strong> {{ student.id }}</p>
+                <p><strong>Họ tên:</strong> {{ student.fullName }}</p>
+                
+                <!-- Yêu cầu 2: Tên lớp bằng v-text -->
+                <p><strong>Lớp:</strong> <span v-text="student.className"></span></p>
+                
+                <p><strong>Điểm TB:</strong> {{ student.gpa }}</p>
+                
+                <!-- Yêu cầu 4: Hiển thị xếp loại dựa trên điểm trung bình bằng v-if / v-else-if / v-else -->
+                <p>
+                    <strong>Xếp loại:</strong> 
+                    <span :class="rankClass">
+                        <span v-if="student.gpa >= 8">Giỏi</span>
+                        <span v-else-if="student.gpa >= 6.5">Khá</span>
+                        <span v-else-if="student.gpa >= 5">Trung bình</span>
+                        <span v-else>Chưa đạt</span>
+                    </span>
+                </p>
+
+                <!-- Yêu cầu 6: Hiển thị "Đang học" hoặc "Đã nghỉ" theo trạng thái (v-if / v-show hoặc toán tử 3 ngôi) -->
+                <p>
+                    <strong>Trạng thái:</strong> 
+                    <span v-if="student.isStudying" style="color: green;">Đang học</span>
+                    <span v-else style="color: gray;">Đã nghỉ</span>
+                </p>
+            </div>
+
+            <!-- Yêu cầu 7: Tạo nút bật/tắt phần giới thiệu bằng v-show -->
+            <button @click="toggleIntro">
+                {{ showIntro ? 'Ẩn giới thiệu' : 'Hiện giới thiệu' }}
+            </button>
+
+            <div v-show="showIntro" class="intro">
+                <p><strong>Giới thiệu bản thân:</strong> Chào bạn, tôi là sinh viên chăm chỉ đang học lập trình Web với VueJS.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                // Yêu cầu 1: Khai báo dữ liệu gồm: mã sinh viên, họ tên, lớp, ảnh đại diện, điểm trung bình, trạng thái
+                const student = ref({
+                    id: "B21DCCN001",
+                    fullName: "Nguyễn Văn A",
+                    className: "D21CQCN01-V",
+                    avatar: "https://via.placeholder.com/150",
+                    gpa: 8.5,
+                    isStudying: true
+                });
+
+                // Trạng thái bật/tắt phần giới thiệu
+                const showIntro = ref(false);
+
+                const toggleIntro = () => {
+                    showIntro.value = !showIntro.value;
+                };
+
+                // Yêu cầu 5: Dùng :class hoặc :style để đổi màu xếp loại dựa trên điểm
+                const rankClass = computed(() => {
+                    const gpa = student.value.gpa;
+                    if (gpa >= 8) return 'gioi';
+                    if (gpa >= 6.5) return 'kha';
+                    if (gpa >= 5) return 'trung-binh';
+                    return 'chua-dat';
+                });
+
+                return {
+                    student,
+                    showIntro,
+                    toggleIntro,
+                    rankClass
+                };
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>
