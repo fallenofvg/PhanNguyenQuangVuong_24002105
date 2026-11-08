@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài 3 - Giỏ hàng với Props và $emit</title>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .summary { margin-top: 20px; padding: 15px; background: #eef9ff; border-radius: 5px; font-size: 1.1em; }
+        .empty-cart { font-style: italic; color: #888; text-align: center; padding: 20px; }
+        button { padding: 4px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <h2>BÀI 3: GIỎ HÀNG VỚI PROPS VÀ $EMIT</h2>
+
+        <!-- Yêu cầu 8: Hiển thị "Giỏ hàng trống" khi xóa hết sản phẩm -->
+        <div v-if="cartItems.length === 0" class="empty-cart">
+            Giỏ hàng trống
+        </div>
+
+        <table v-else>
+            <thead>
+                <tr>
+                    <th>Tên sản phẩm</th>
+                    <th>Đơn giá</th>
+                    <th style="text-align: center;">Số lượng</th>
+                    <th>Thành tiền</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Yêu cầu 2 & 4: Truyền prop item và lắng nghe các sự kiện gửi từ con -->
+                <tr is="vue:dong-gio-hang"
+                    v-for="product in cartItems" 
+                    :key="product.id"
+                    :item="product"
+                    @doi-so-luong="handleDoiSoLuong"
+                    @yeu-cau-xoa="handleYeuCauXoa">
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Yêu cầu 7: Thống kê tổng số lượng và tổng tiền -->
+        <div v-if="cartItems.length > 0" class="summary">
+            <p><strong>Tổng số lượng:</strong> {{ tongSoLuong }} sản phẩm</p>
+            <p><strong>Tổng tiền:</strong> {{ tongTien.toLocaleString() }} đồng</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import DongGioHang from './components/DongGioHang.js';
+
+        const { createApp } = Vue;
+
+        const app = createApp({
+            data() {
+                return {
+                    // Yêu cầu 1 & Kết quả kiểm tra mẫu: 2 Bút (5.000đ) và 3 Quyển vở (12.000đ)
+                    cartItems: [
+                        { id: 1, ten: 'Bút', donGia: 5000, soLuong: 2 },
+                        { id: 2, ten: 'Quyển vở', donGia: 12000, soLuong: 3 }
+                    ]
+                }
+            },
+            computed: {
+                // Yêu cầu 7: Tính tổng số lượng
+                tongSoLuong() {
+                    return this.cartItems.reduce((sum, item) => sum + item.soLuong, 0);
+                },
+                // Yêu cầu 7: Tính tổng tiền
+                tongTien() {
+                    return this.cartItems.reduce((sum, item) => sum + (item.donGia * item.soLuong), 0);
+                }
+            },
+            methods: {
+                // Yêu cầu 4 & 5: Kiểm tra số lượng hợp lệ (1 <= n <= 99) rồi cập nhật mảng
+                handleDoiSoLuong(id, soLuongMoi) {
+                    if (Number.isInteger(soLuongMoi) && soLuongMoi >= 1 && soLuongMoi <= 99) {
+                        const target = this.cartItems.find(item => item.id === id);
+                        if (target) {
+                            target.soLuong = soLuongMoi;
+                        }
+                    }
+                },
+                // Yêu cầu 4: Xóa sản phẩm khỏi mảng cha
+                handleYeuCauXoa(id) {
+                    this.cartItems = this.cartItems.filter(item => item.id !== id);
+                }
+            }
+        });
+
+        // Đăng ký component con
+        app.component('dong-gio-hang', DongGioHang);
+        app.mount('#app');
+    </script>
+</body>
+</html>
