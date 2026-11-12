@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý sản phẩm - Vue.js & PHP</title>
+    <!-- Sử dụng Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .form-group { margin-bottom: 15px; }
+        label { display: inline-block; width: 120px; }
+        input { padding: 6px; width: 250px; }
+        button { padding: 8px 15px; cursor: pointer; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <h2>Quản lý sản phẩm</h2>
+
+        <!-- Thông báo lỗi hoặc thành công -->
+        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+        <p v-if="successMessage" class="success">{{ successMessage }}</p>
+
+        <!-- Biểu mẫu thêm/sửa -->
+        <form @submit.prevent="saveProduct">
+            <div class="form-group">
+                <label>Tên sản phẩm:</label>
+                <input type="text" v-model.trim="form.name" required>
+            </div>
+            <div class="form-group">
+                <label>Đơn giá:</label>
+                <input type="number" v-model.number="form.price" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>Số lượng tồn:</label>
+                <input type="number" v-model.number="form.stock" min="0" required>
+            </div>
+            <button type="submit">{{ isEditing ? 'Cập nhật' : 'Thêm mới' }}</button>
+            <button type="button" v-if="isEditing" @click="resetForm" style="margin-left: 10px;">Hủy</button>
+        </form>
+
+        <!-- Bảng danh sách sản phẩm -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Đơn giá (đồng)</th>
+                    <th>Số lượng tồn</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="product in products" :key="product.id">
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.name }}</td>
+                    <td>{{ Number(product.price).toLocaleString('vi-VN') }}</td>
+                    <td>{{ product.stock }}</td>
+                    <td>
+                        <button @click="editProduct(product)">Sửa</button>
+                        <button @click="deleteProduct(product.id)" style="margin-left: 5px; background-color: #ff4d4d; color: white; border: none;">Xóa</button>
+                    </td>
+                </tr>
+                <tr v-if="products.length === 0">
+                    <td colspan="5" style="text-align: center;">Không có sản phẩm nào.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const apiUrl = 'api/products.php';
+                const products = ref([]);
+                const form = ref({ id: null, name: '', price: '', stock: '' });
+                const isEditing = ref(false);
+                const errorMessage = ref('');
+                const successMessage = ref('');
+
+                // Lấy danh sách sản phẩm
+                const fetchProducts = async () => {
+                    errorMessage.value = '';
+                    try {
+                        const response = await fetch(apiUrl);
+                        const result = await response.json();
+                        if (result.success) {
+                            products.value = result.data;
+                        } else {
+                            errorMessage.value = result.message;
+                        }
+                    } catch (error) {
+                        errorMessage.value = 'Không thể kết nối đến API!';
+                    }
+                };
+
+                // Lưu (Thêm mới hoặc Cập nhật)
+                const saveProduct = async () => {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+
+                    const method = isEditing.value ? 'PUT' : 'POST';
+                    let url = apiUrl;
+                    if (isEditing.value) {
+                        url += `?id=${form.value.id}`;
+                    }
+
+                    try {
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: form.value.name,
+                                price: form.value.price,
+                                stock: form.value.stock
+                            })
+                        });
+                        const result = await response.json();
+
+                        if (result.success) {
+                            successMessage.value = result.message;
+                            resetForm();
+                            fetchProducts();
+                        } else {
+                            errorMessage.value = result.message;
+                        }
+                    } catch (error) {
+                        errorMessage.value = 'Đã xảy ra lỗi khi gửi dữ liệu!';
+                    }
+                };
+
+                // Đưa dữ liệu lên form để sửa
+                const editProduct = (product) => {
+                    isEditing.value = true;
+                    form.value = { ...product };
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                };
+
+                // Xóa sản phẩm
+                const deleteProduct = async (id) => {
+                    if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?')) {
+                        return;
+                    }
+
+                    errorMessage.value = '';
+                    successMessage.value = '';
+
+                    try {
+                        const response = await fetch(`${apiUrl}?id=${id}`, {
+                            method: 'DELETE'
+                        });
+                        const result = await response.json();
+
+                        if (result.success) {
+                            successMessage.value = result.message;
+                            fetchProducts();
+                        } else {
+                            errorMessage.value = result.message;
+                        }
+                    } catch (error) {
+                        errorMessage.value = 'Đã xảy ra lỗi khi xóa!';
+                    }
+                };
+
+                // Reset form
+                const resetForm = () => {
+                    isEditing.value = false;
+                    form.value = { id: null, name: '', price: '', stock: '' };
+                };
+
+                onMounted(() => {
+                    fetchProducts();
+                });
+
+                return {
+                    products,
+                    form,
+                    isEditing,
+                    errorMessage,
+                    successMessage,
+                    saveProduct,
+                    editProduct,
+                    deleteProduct,
+                    resetForm
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
